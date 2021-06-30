@@ -1,30 +1,36 @@
+import Head from 'next/head';
+import { MongoClient, ObjectId } from 'mongodb';
 import MeetupDetail from '../../components/meetups/MeetupDetail';
 
-function MeetupDetails() {
+function MeetupDetails(props) {
     return (
-        <MeetupDetail
-            image="https://i.imgur.com/mCbaca8.jpeg"
-            title="First meetup"
-            address="Mulholland dr."
-            description="Meetup description"
-        />
+        <>
+            <Head>
+                <title>{props.title}</title>
+                <meta name="description" content={props.description} />
+            </Head>
+            <MeetupDetail
+                image={props.image}
+                title={props.title}
+                address={props.address}
+                description={props.description}
+            />
+        </>
     );
 }
 
 export async function getStaticPaths() {
+    const client = await MongoClient.connect('mongodb+srv://igor:spellbound@cluster0.vtkas.mongodb.net/meetups?retryWrites=true&w=majority');
+    const db = client.db();
+
+    const meetupsCollection = db.collection('meetups');
+    
+    const meetups = await meetupsCollection.find({}, { _id: 1 }).toArray();
+
+    client.close();
+
     return {
-        paths: [
-            {
-                params: {
-                    meetupId: '1'
-                }
-            },
-            {
-                params: {
-                    meetupId: '2'
-                }
-            },
-        ],
+        paths: meetups.map(meetup => ({ params: { meetupId: meetup._id.toString() } })),
         fallback: false
     }
 }
@@ -32,16 +38,17 @@ export async function getStaticPaths() {
 export async function getStaticProps(context) {
     const meetupId = context.params.meetupId;
 
+    const client = await MongoClient.connect('mongodb+srv://igor:spellbound@cluster0.vtkas.mongodb.net/meetups?retryWrites=true&w=majority');
+    const db = client.db();
+
+    const meetupsCollection = db.collection('meetups');
+    
+    const meetup = await meetupsCollection.findOne({ _id: ObjectId(meetupId) });
+
+    client.close();
+
     return {
-        props: {
-            meetup: {
-                id: meetupId,
-                image: "https://i.imgur.com/mCbaca8.jpeg",
-                title: "First meetup",
-                address: "Mulholland dr.",
-                description: "Meetup description"
-            }
-        },
+        props: { ...meetup, _id: meetup._id.toString() },
         revalidate: 1
     }
 }

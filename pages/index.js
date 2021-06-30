@@ -1,38 +1,36 @@
+import Head from 'next/head';
+import { MongoClient } from 'mongodb';
 import MeetupList from '../components/meetups/MeetupList';
 
-const MEETUPS = [
-    {
-        id: '1',
-        title: 'one',
-        image: 'https://image.shutterstock.com/image-photo/mountains-under-mist-morning-amazing-260nw-1725825019.jpg',
-        address: 'addr 2',
-        description: 'lorem'
-    },
-    {
-        id: '2',
-        title: 'two',
-        image: 'https://i.imgur.com/mCbaca8.jpeg',
-        address: 'addr 2',
-        description: 'ipsum'
-    },
-    {
-        id: '3',
-        title: 'three',
-        image: 'https://image.shutterstock.com/image-photo/mountains-under-mist-morning-amazing-260nw-1725825019.jpg',
-        address: 'addr 3',
-        description: 'dolor'
-
-    },
-];
-
 function HomePage(props) {
-    return <MeetupList meetups={props.meetups} />;
+    return (
+        <>
+            <Head>
+                <title>Meetups</title>
+                <meta name="description" content="Browse a huge list of meetups" />
+            </Head>
+            <MeetupList meetups={props.meetups} />
+        </>
+    );
 }
 
 export async function getStaticProps() {
+    const client = await MongoClient.connect('mongodb+srv://igor:spellbound@cluster0.vtkas.mongodb.net/meetups?retryWrites=true&w=majority');
+    const db = client.db();
+
+    const meetupsCollection = db.collection('meetups');
+
+    const meetups = await meetupsCollection.find().toArray();
+
+    client.close();
     return {
         props: {
-            meetups: MEETUPS
+            meetups: meetups.map(meetup => ({
+                id: meetup._id.toString(),
+                title: meetup.title,
+                image: meetup.image,
+                address: meetup.address,
+            })) 
         },
         revalidate: 1
     }
